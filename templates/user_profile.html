@@ -1,0 +1,279 @@
+{% extends "layout.html" %}
+
+{% block title %}Mon profil - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- User Profile Column -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <div class="d-flex justify-content-center mb-4">
+                        <div class="position-relative">
+                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 100px; height: 100px;">
+                                <span class="text-white" style="font-size: 2.5rem;">{{ current_user.username[0].upper() }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h4>{{ current_user.username }}</h4>
+                    <p class="text-muted">{{ current_user.email }}</p>
+                    <p class="mb-0">
+                        <span class="badge bg-primary">{{ current_user.user_type.value|capitalize }}</span>
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <div class="d-grid">
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                            <i class="fas fa-user-edit me-2"></i> Modifier le profil
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Paramètres</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            Notifications
+                            <span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="notificationsSwitch" checked>
+                                    <label class="form-check-label" for="notificationsSwitch"></label>
+                                </div>
+                            </span>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            Mode sombre
+                            <span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="darkModeSwitch">
+                                    <label class="form-check-label" for="darkModeSwitch"></label>
+                                </div>
+                            </span>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            Données hors ligne
+                            <span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="offlineModeSwitch" checked>
+                                    <label class="form-check-label" for="offlineModeSwitch"></label>
+                                </div>
+                            </span>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            Changer le mot de passe
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action text-danger">
+                            Supprimer le compte
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            {% if current_user.user_type.value == 'customer' %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Vous êtes un professionnel ?</h5>
+                </div>
+                <div class="card-body">
+                    <p>Enregistrez votre entreprise pour gérer vos files d'attente et attirer plus de clients.</p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('register_business') }}" class="btn btn-primary">
+                            <i class="fas fa-store me-2"></i> Enregistrer mon entreprise
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Active Queues Column -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Mes files d'attente actives</h5>
+                    <a href="{{ url_for('search') }}" class="btn btn-sm btn-light">
+                        <i class="fas fa-plus me-1"></i> Rejoindre une file
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="my-queues-list">
+                        {% if active_queues %}
+                            {% for entry in active_queues %}
+                            <div class="card mb-3 border-0 shadow-sm queue-card">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <h5 class="mb-1">{{ entry.service.name }}</h5>
+                                            <p class="mb-0 text-muted">{{ entry.business.name }}</p>
+                                            <p class="small mb-2">
+                                                <i class="fas fa-map-marker-alt me-1"></i> {{ entry.business.address|truncate(40) }}
+                                            </p>
+                                            
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-3">
+                                                    <span class="badge rounded-pill bg-{% if entry.position <= 3 %}success{% elif entry.position <= 8 %}warning{% else %}danger{% endif %} px-3 py-2">
+                                                        Position #{{ entry.position }}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span class="text-muted small">
+                                                        {% if entry.estimated_wait > 0 %}
+                                                            <i class="fas fa-clock me-1"></i> Attente estimée: {{ entry.estimated_wait }} min
+                                                        {% else %}
+                                                            <i class="fas fa-check-circle me-1 text-success"></i> C'est bientôt votre tour!
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                                            <a href="{{ url_for('service_details', business_id=entry.business.id) }}" class="btn btn-outline-primary mb-2 w-100">
+                                                <i class="fas fa-info-circle me-1"></i> Détails
+                                            </a>
+                                            <form id="leave-queue-form-{{ entry.id }}" action="{{ url_for('leave_queue', entry_id=entry.id) }}" method="POST" class="offline-form" data-action-type="leave_queue">
+                                                <button type="submit" class="btn btn-outline-danger w-100 leave-queue-btn" data-entry-id="{{ entry.id }}">
+                                                    <i class="fas fa-sign-out-alt me-1"></i> Quitter la file
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center p-5">
+                                <div class="mb-4">
+                                    <i class="fas fa-hourglass-half fa-3x text-muted"></i>
+                                </div>
+                                <h5>Aucune file d'attente active</h5>
+                                <p class="text-muted mb-4">Vous n'êtes actuellement dans aucune file d'attente.</p>
+                                <a href="{{ url_for('search') }}" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i> Chercher des services
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Queue History Section -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Historique des files d'attente</h5>
+                </div>
+                <!-- Notifications Section -->
+                <div class="card-body">
+                    {% for notif in current_user.notifications if not notif.is_read %}
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            {{ notif.message }}
+                            <form method="POST" action="{{ url_for('mark_notification_read', id=notif.id) }}">
+                                <button type="submit" class="btn-close"></button>
+                            </form>
+                        </div>
+                    {% endfor %}
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th>Établissement</th>
+                                    <th>Date</th>
+                                    <th>Statut</th>
+                                    <th>Temps d'attente</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Coupe Homme</td>
+                                    <td>Coiffeur Exemple</td>
+                                    <td>12/08/2023</td>
+                                    <td><span class="badge bg-success">Terminé</span></td>
+                                    <td>25 min</td>
+                                </tr>
+                                <tr>
+                                    <td>Lavage Complet</td>
+                                    <td>Car Wash Express</td>
+                                    <td>05/08/2023</td>
+                                    <td><span class="badge bg-success">Terminé</span></td>
+                                    <td>15 min</td>
+                                </tr>
+                                <tr>
+                                    <td>Table pour 2</td>
+                                    <td>Restaurant Le Gourmet</td>
+                                    <td>29/07/2023</td>
+                                    <td><span class="badge bg-danger">Annulé</span></td>
+                                    <td>--</td>
+                                </tr>
+                                <tr>
+                                    <td>Coupe Homme</td>
+                                    <td>Coiffeur Exemple</td>
+                                    <td>15/07/2023</td>
+                                    <td><span class="badge bg-success">Terminé</span></td>
+                                    <td>20 min</td>
+                                </tr>
+                                <tr>
+                                    <td>Colorisation</td>
+                                    <td>Salon de Beauté</td>
+                                    <td>10/07/2023</td>
+                                    <td><span class="badge bg-success">Terminé</span></td>
+                                    <td>45 min</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="#" class="text-decoration-none">Voir tout l'historique</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProfileModalLabel">Modifier le profil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('user_profile') }}" method="GET">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nom d'utilisateur</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ current_user.username }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ current_user.email }}" readonly>
+                        <div class="form-text">L'email ne peut pas être modifié.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Téléphone</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="Votre numéro de téléphone">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="receiveNotifications" name="receive_notifications" checked>
+                            <label class="form-check-label" for="receiveNotifications">
+                                Je souhaite recevoir des notifications par email
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

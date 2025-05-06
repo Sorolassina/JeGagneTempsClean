@@ -1,0 +1,22 @@
+Copyright (c) 2025 SORO LASSINA
+
+Ce code source est mis à disposition à des fins strictement non commerciales.  
+Toute utilisation commerciale — incluant, sans s’y limiter :  
+la vente, la distribution dans un produit ou service payant, ou l’usage dans un cadre professionnel lucratif — est strictement interdite sans autorisation écrite préalable de l’auteur.
+
+✅ Utilisations autorisées :
+- Usage personnel
+- Usage éducatif ou académique
+- Études, expérimentations, démonstrations
+
+❌ Utilisations interdites sans permission écrite :
+- Intégration dans un produit ou service commercial
+- Hébergement ou revente dans une application ou plateforme tierce
+- Modification dans un but lucratif
+
+Pour toute demande d'autorisation commerciale :  
+📧 Contact : sorolassina58@gmail.com
+
+---
+
+Aucune garantie n'est fournie quant à l’usage de ce logiciel. Utilisez-le à vos propres risques.

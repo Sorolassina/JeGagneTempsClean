@@ -1,0 +1,223 @@
+{% extends "layout.html" %}
+
+{% block title %}Enregistrer mon entreprise - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <h2 class="card-title text-center mb-4">Enregistrer mon entreprise</h2>
+                    
+                    {% if not current_user.is_authenticated %}
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i> Vous devez être connecté pour enregistrer votre entreprise.
+                        <a href="{{ url_for('login') }}" class="alert-link">Se connecter</a> ou <a href="{{ url_for('google_auth.login') }}" class="alert-link">S'inscrire avec Google</a>
+                    </div>
+                    {% endif %}
+                    
+                    <form action="{{ url_for('register_business') }}" method="POST" {% if not current_user.is_authenticated %}class="disabled-form"{% endif %}>
+                        <div class="mb-4">
+                            <h5 class="mb-3">Informations générales</h5>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="name" class="form-label">Nom de l'entreprise *</label>
+                                    <input type="text" class="form-control" id="name" name="name" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="category" class="form-label">Catégorie *</label>
+                                    <select class="form-select" id="category" name="category" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                        <option value="" selected disabled>Sélectionnez une catégorie</option>
+                                        {% for category in categories %}
+                                        <option value="{{ category.name }}">{{ category.value }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="phone" class="form-label">Téléphone *</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                </div>
+                                <div class="col-12">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" {% if not current_user.is_authenticated %}disabled{% endif %}></textarea>
+                                    <div class="form-text">Décrivez votre entreprise, vos services et ce qui vous rend unique.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5 class="mb-3">Localisation</h5>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="address" class="form-label">Adresse complète *</label>
+                                    <input type="text" class="form-control" id="address" name="address" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="latitude" class="form-label">Latitude *</label>
+                                    <input type="number" step="any" class="form-control" id="latitude" name="latitude" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="longitude" class="form-label">Longitude *</label>
+                                    <input type="number" step="any" class="form-control" id="longitude" name="longitude" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                </div>
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-outline-primary w-100 get-location-btn" {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                        <i class="fas fa-map-marker-alt me-2"></i> Obtenir mes coordonnées actuelles
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <div id="location-map" style="height: 300px; border-radius: 8px; display: none;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5 class="mb-3">Horaires</h5>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="opening_hours" class="form-label">Heures d'ouverture *</label>
+                                    <input type="text" class="form-control" id="opening_hours" name="opening_hours" placeholder="Ex: Lun-Ven: 8h-18h, Sam: 9h-15h" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="terms_check" required {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                <label class="form-check-label" for="terms_check">
+                                    J'accepte les <a href="#">conditions d'utilisation</a> et je confirme que les informations fournies sont exactes.
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                            <button type="submit" class="btn btn-primary btn-lg" {% if not current_user.is_authenticated %}disabled{% endif %}>
+                                <i class="fas fa-store me-2"></i> Enregistrer mon entreprise
+                            </button>
+                            {% if has_business %}
+                                <a href="{{ url_for('business_dashboard') }}" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-times me-2"></i> Abandonner
+                                </a>
+                            {% else %}
+                                <a href="{{ url_for('user_profile') }}" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-times me-2"></i> Abandonner
+                                </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key|default('', true) }}&libraries=places" async defer></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get location button functionality
+        const getLocationBtn = document.querySelector('.get-location-btn');
+        if (getLocationBtn) {
+            getLocationBtn.addEventListener('click', function() {
+                if (navigator.geolocation) {
+                    getLocationBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Récupération...';
+                    getLocationBtn.disabled = true;
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            // Fill latitude and longitude fields
+                            document.getElementById('latitude').value = position.coords.latitude;
+                            document.getElementById('longitude').value = position.coords.longitude;
+                            
+                            // Show map and pin
+                            const mapContainer = document.getElementById('location-map');
+                            mapContainer.style.display = 'block';
+                            
+                            // Initialize map
+                            const map = new google.maps.Map(mapContainer, {
+                                center: { lat: position.coords.latitude, lng: position.coords.longitude },
+                                zoom: 15,
+                                mapTypeControl: false,
+                                streetViewControl: false
+                            });
+                            
+                            // Add marker
+                            const marker = new google.maps.Marker({
+                                position: { lat: position.coords.latitude, lng: position.coords.longitude },
+                                map: map,
+                                draggable: true,
+                                title: "Emplacement de votre entreprise"
+                            });
+                            
+                            // Update fields when marker is dragged
+                            marker.addListener('dragend', function() {
+                                const pos = marker.getPosition();
+                                document.getElementById('latitude').value = pos.lat();
+                                document.getElementById('longitude').value = pos.lng();
+                                
+                                // Try to get address from coordinates
+                                const geocoder = new google.maps.Geocoder();
+                                geocoder.geocode({ location: pos }, function(results, status) {
+                                    if (status === 'OK' && results[0]) {
+                                        document.getElementById('address').value = results[0].formatted_address;
+                                    }
+                                });
+                            });
+                            
+                            // Try to get address from coordinates
+                            const geocoder = new google.maps.Geocoder();
+                            geocoder.geocode({ location: { lat: position.coords.latitude, lng: position.coords.longitude } }, function(results, status) {
+                                if (status === 'OK' && results[0]) {
+                                    document.getElementById('address').value = results[0].formatted_address;
+                                }
+                                
+                                // Reset button
+                                getLocationBtn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i> Mettre à jour mes coordonnées';
+                                getLocationBtn.disabled = false;
+                            });
+                        },
+                        function(error) {
+                            // Handle errors
+                            let errorMessage = "";
+                            switch(error.code) {
+                                case error.PERMISSION_DENIED:
+                                    errorMessage = "Vous avez refusé l'accès à votre position.";
+                                    break;
+                                case error.POSITION_UNAVAILABLE:
+                                    errorMessage = "Votre position n'est pas disponible.";
+                                    break;
+                                case error.TIMEOUT:
+                                    errorMessage = "La requête de géolocalisation a expiré.";
+                                    break;
+                                case error.UNKNOWN_ERROR:
+                                    errorMessage = "Une erreur inconnue s'est produite.";
+                                    break;
+                            }
+                            
+                            alert(errorMessage);
+                            getLocationBtn.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i> Obtenir mes coordonnées actuelles';
+                            getLocationBtn.disabled = false;
+                        }
+                    );
+                } else {
+                    alert("La géolocalisation n'est pas prise en charge par votre navigateur.");
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .disabled-form {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+    .get-location-btn {
+        height: 38px;
+    }
+</style>
+{% endblock %}

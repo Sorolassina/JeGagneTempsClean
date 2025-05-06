@@ -1,0 +1,427 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ business.name }} - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row g-4">
+        <!-- Business Details Column -->
+        <div class="col-lg-8">
+            <!-- Business Info Card -->
+            <div class="card shadow-sm mb-4 business-details">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h2 class="card-title business-name">{{ business.name }}</h2>
+                            <p class="text-muted business-category">{{ business.category.value }}</p>
+                        </div>
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            {% if business.is_active %}
+                                <i class="fas fa-check-circle text-success me-1"></i> Ouvert
+                            {% else %}
+                                <i class="fas fa-times-circle text-danger me-1"></i> Fermé
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-7">
+                            <p class="business-address">
+                                <i class="fas fa-map-marker-alt me-2"></i> {{ business.address }}
+                                {% if business.distance is defined %}
+                                <span class="badge bg-light text-dark ms-2">
+                                    {% if business.distance < 1 %}
+                                        {{ (business.distance * 1000)|int }} m
+                                    {% else %}
+                                        {{ business.distance|round(1) }} km
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                            </p>
+                            <p class="business-phone">
+                                <i class="fas fa-phone me-2"></i> {{ business.phone }}
+                            </p>
+                            <p class="business-hours">
+                                <i class="fas fa-clock me-2"></i> {{ business.opening_hours }}
+                            </p>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary get-directions-btn" type="button">
+                                    <i class="fas fa-directions me-2"></i> Obtenir l'itinéraire
+                                </button>
+                                <button class="btn btn-outline-secondary save-offline-btn" type="button" data-business-id="{{ business.id }}">
+                                    <i class="fas fa-download me-2"></i> Enregistrer pour hors ligne
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if business.description %}
+                    <div class="mt-3 business-description">
+                        <h5>À propos</h5>
+                        <p>{{ business.description }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Map Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-0">
+                    <div id="map-container" style="height: 300px; border-radius: 4px;">
+                        <!-- Map will be loaded here -->
+                        <div id="map-loader" class="d-flex justify-content-center align-items-center h-100">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Services Section -->
+            <h3 class="mb-3">Services disponibles</h3>
+            
+            {% if services %}
+                {% for service in services %}
+                <div class="card shadow-sm mb-3 service-card" data-service-id="{{ service.id }}">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-7">
+                                <h5 class="card-title service-name">{{ service.name }}</h5>
+                                {% if service.description %}
+                                <p class="card-text service-description">{{ service.description }}</p>
+                                {% endif %}
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="me-3 service-duration">
+                                        <i class="fas fa-clock me-1"></i> {{ service.duration_minutes }} min
+                                    </span>
+                                    {% if service.price %}
+                                    <span class="service-price">
+                                        <i class="fas fa-tag me-1"></i> {{ service.price }} €
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-5 text-md-end">
+                                <div class="mb-3 text-center">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="queue-position-indicator badge {% if service.queue_size <= 3 %}queue-small{% elif service.queue_size <= 8 %}queue-medium{% else %}queue-large{% endif %}" data-position="{{ service.queue_size }}" data-wait-time="{{ service.wait_time }}">
+                                            {% if service.queue_size == 0 %}
+                                                Disponible
+                                            {% else %}
+                                                {{ service.queue_size }} personnes en attente
+                                            {% endif %}
+                                        </div>
+                                        {% if service.wait_time > 0 %}
+                                        <small class="text-muted mt-1">
+                                            Temps d'attente estimé: {{ service.wait_time }} min
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                {% if current_user.is_authenticated %}
+                                    {% if current_user.user_type.value == 'customer' %}
+                                    <form id="join-queue-form-{{ service.id }}" action="{{ url_for('join_queue', service_id=service.id) }}" method="POST" class="offline-form" data-action-type="join_queue">
+                                        <button type="submit" class="btn btn-primary w-100 join-queue-btn" data-service-id="{{ service.id }}">
+                                            <i class="fas fa-user-plus me-1"></i> Rejoindre la file d'attente
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary w-100">
+                                        <i class="fas fa-sign-in-alt me-1"></i> Connectez-vous pour rejoindre la file
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="card shadow-sm">
+                    <div class="card-body text-center p-5">
+                        <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                        <h5>Aucun service disponible</h5>
+                        <p class="text-muted">Cette entreprise n'a pas encore configuré ses services.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar Column -->
+        <div class="col-lg-4">
+            <!-- Queue Info Widget -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Informations sur la file d'attente</h5>
+                </div>
+                <div class="card-body">
+                    {% set total_waiting = 0 %}
+                    {% set max_wait_time = 0 %}
+                    {% for service in services %}
+                        {% set total_waiting = total_waiting + service.queue_size %}
+                        {% if service.wait_time > max_wait_time %}
+                            {% set max_wait_time = service.wait_time %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="mb-1">Total en attente</h6>
+                            <p class="mb-0 fs-4 fw-bold">{{ total_waiting }} personnes</p>
+                        </div>
+                        <div class="text-end">
+                            <h6 class="mb-1">Temps d'attente max.</h6>
+                            <p class="mb-0 fs-4 fw-bold">{{ max_wait_time }} min</p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <div class="progress mb-3" style="height: 10px;">
+                            {% if total_waiting == 0 %}
+                                <div class="progress-bar bg-success" style="width: 100%"></div>
+                            {% elif total_waiting < 5 %}
+                                <div class="progress-bar bg-success" style="width: 25%"></div>
+                            {% elif total_waiting < 10 %}
+                                <div class="progress-bar bg-warning" style="width: 50%"></div>
+                            {% elif total_waiting < 20 %}
+                                <div class="progress-bar bg-warning" style="width: 75%"></div>
+                            {% else %}
+                                <div class="progress-bar bg-danger" style="width: 100%"></div>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted mb-0">
+                            {% if total_waiting == 0 %}
+                                <span class="text-success">Pas d'attente actuellement</span>
+                            {% elif total_waiting < 5 %}
+                                <span class="text-success">File d'attente courte</span>
+                            {% elif total_waiting < 10 %}
+                                <span class="text-warning">File d'attente modérée</span>
+                            {% elif total_waiting < 20 %}
+                                <span class="text-warning">File d'attente importante</span>
+                            {% else %}
+                                <span class="text-danger">File d'attente très longue</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tips Widget -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Conseils</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex">
+                            <i class="fas fa-clock text-info me-3 mt-1"></i>
+                            <div>
+                                Venez aux heures creuses pour réduire votre temps d'attente
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex">
+                            <i class="fas fa-mobile-alt text-info me-3 mt-1"></i>
+                            <div>
+                                Réservez votre place en ligne pour éviter l'attente sur place
+                            </div>
+                        </li>
+                        <li class="list-group-item d-flex">
+                            <i class="fas fa-star text-info me-3 mt-1"></i>
+                            <div>
+                                Les clients réguliers peuvent bénéficier d'un accès prioritaire
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Similar Businesses Widget -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Services similaires à proximité</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Nom du service</h6>
+                                <small>1.2 km</small>
+                            </div>
+                            <p class="mb-1 text-muted small">{{ business.category.value }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-success">
+                                    <i class="fas fa-user-clock me-1"></i> Pas d'attente
+                                </small>
+                                <small class="text-muted">5 min en voiture</small>
+                            </div>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Autre service</h6>
+                                <small>1.8 km</small>
+                            </div>
+                            <p class="mb-1 text-muted small">{{ business.category.value }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-warning">
+                                    <i class="fas fa-user-clock me-1"></i> 3 personnes en attente
+                                </small>
+                                <small class="text-muted">8 min en voiture</small>
+                            </div>
+                        </a>
+                        <a href="#" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">Service populaire</h6>
+                                <small>2.5 km</small>
+                            </div>
+                            <p class="mb-1 text-muted small">{{ business.category.value }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-danger">
+                                    <i class="fas fa-user-clock me-1"></i> 12 personnes en attente
+                                </small>
+                                <small class="text-muted">12 min en voiture</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="{{ url_for('search', category=business.category.name) }}" class="text-decoration-none">
+                        Voir tous les services similaires
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Location input for directions -->
+<div class="modal fade" id="directionsModal" tabindex="-1" aria-labelledby="directionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="directionsModalLabel">Obtenir l'itinéraire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="startLocation" class="form-label">Point de départ</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="startLocation" placeholder="Votre position actuelle">
+                        <button class="btn btn-outline-secondary" type="button" id="useCurrentLocation">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="transportMode" class="form-label">Mode de transport</label>
+                    <select class="form-select" id="transportMode">
+                        <option value="DRIVING">En voiture</option>
+                        <option value="WALKING">À pied</option>
+                        <option value="TRANSIT">Transports en commun</option>
+                        <option value="BICYCLING">À vélo</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="getDirectionsBtn">Obtenir l'itinéraire</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize get directions button
+        const getDirectionsBtn = document.querySelector('.get-directions-btn');
+        if (getDirectionsBtn) {
+            getDirectionsBtn.addEventListener('click', function() {
+                const directionsModal = new bootstrap.Modal(document.getElementById('directionsModal'));
+                directionsModal.show();
+            });
+        }
+        
+        // Get directions from modal
+        const getDirectionsModalBtn = document.getElementById('getDirectionsBtn');
+        if (getDirectionsModalBtn) {
+            getDirectionsModalBtn.addEventListener('click', function() {
+                const startLocation = document.getElementById('startLocation').value;
+                const transportMode = document.getElementById('transportMode').value;
+                
+                // Get business coordinates
+                const businessLat = parseFloat("{{ business.latitude | default(0) }}");
+                const businessLng = parseFloat("{{ business.longitude | default(0) }}");
+                
+                // If using current location
+                if (startLocation === '' || startLocation === 'Votre position actuelle') {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                const userLat = position.coords.latitude;
+                                const userLng = position.coords.longitude;
+                                
+                                // Generate Google Maps directions URL
+                                const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${userLat},${userLng}&destination=${businessLat},${businessLng}&travelmode=${transportMode.toLowerCase()}`;
+                                
+                                // Open in new tab
+                                window.open(directionsUrl, '_blank');
+                                
+                                // Close modal
+                                const modal = bootstrap.Modal.getInstance(document.getElementById('directionsModal'));
+                                modal.hide();
+                            },
+                            function(error) {
+                                alert("Impossible d'obtenir votre position actuelle. Veuillez entrer une adresse de départ.");
+                            }
+                        );
+                    } else {
+                        alert("La géolocalisation n'est pas prise en charge par votre navigateur.");
+                    }
+                } else {
+                    // Using custom start location
+                    const encodedStart = encodeURIComponent(startLocation);
+                    const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodedStart}&destination=${businessLat},${businessLng}&travelmode=${transportMode.toLowerCase()}`;
+                    
+                    // Open in new tab
+                    window.open(directionsUrl, '_blank');
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('directionsModal'));
+                    modal.hide();
+                }
+            });
+        }
+        
+        // Use current location in directions modal
+        const useCurrentLocationBtn = document.getElementById('useCurrentLocation');
+        if (useCurrentLocationBtn) {
+            useCurrentLocationBtn.addEventListener('click', function() {
+                if (navigator.geolocation) {
+                    useCurrentLocationBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                    useCurrentLocationBtn.disabled = true;
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            document.getElementById('startLocation').value = 'Votre position actuelle';
+                            useCurrentLocationBtn.innerHTML = '<i class="fas fa-map-marker-alt"></i>';
+                            useCurrentLocationBtn.disabled = false;
+                        },
+                        function(error) {
+                            alert("Impossible d'obtenir votre position actuelle.");
+                            useCurrentLocationBtn.innerHTML = '<i class="fas fa-map-marker-alt"></i>';
+                            useCurrentLocationBtn.disabled = false;
+                        }
+                    );
+                } else {
+                    alert("La géolocalisation n'est pas prise en charge par votre navigateur.");
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

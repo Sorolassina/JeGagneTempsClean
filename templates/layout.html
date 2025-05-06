@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Je Gagne Temps - Trouvez des services à proximité et économisez du temps d'attente">
+    <meta name="theme-color" content="#8A2BE2">
+    <title>{% block title %}Je Gagne Temps{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/LogoApps.svg') }}">
+    
+    <!-- Manifest for PWA -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- Apple-specific PWA meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/LogoApps.svg') }}">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- User data for offline storage -->
+    <div id="user-data" style="display: none;"
+        data-user-id="{{ current_user.id if current_user.is_authenticated else '' }}"
+        data-user-name="{{ current_user.username if current_user.is_authenticated else '' }}"
+        data-user-type="{{ current_user.user_type.value if current_user.is_authenticated else '' }}"
+        data-is-logged-in="{{ 'true' if current_user.is_authenticated else 'false' }}">
+    </div>
+    
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
+                <img src="{{ url_for('static', filename='images/LogoApps.svg') }}" alt="Logo" height="40" class="me-2">
+                <span>Je Gagne Temps</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('search') }}">
+                            <i class="fas fa-search me-1"></i> Rechercher
+                        </a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                        {# Cas utilisateur connecté via Flask-Login #}
+                        {% if current_user.user_type.value == 'business' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('business_dashboard') }}">
+                                    <i class="fas fa-chart-line me-1"></i> Tableau de bord
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('user_profile') }}">
+                                    <i class="fas fa-list-ol me-1"></i> Mes files d'attente
+                                </a>
+                            </li>
+                        {% endif %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle me-1"></i> {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('user_profile') }}">Mon profil</a></li>
+                                {% if current_user.user_type.value != 'business' %}
+                                    <li><a class="dropdown-item" href="{{ url_for('register_business') }}">Enregistrer mon entreprise</a></li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}">Déconnexion</a></li>
+                            </ul>
+                        </li>
+                    {% elif session.admin_authenticated %}
+                        {# Cas admin connecté sans current_user #}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_users') }}">
+                                <i class="fas fa-user-shield me-1"></i> Admin
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_logout') }}">
+                                <i class="fas fa-sign-out-alt me-1"></i> Déconnexion
+                            </a>
+                        </li>
+                    {% else %}
+                        {# Cas non connecté #}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">
+                                <i class="fas fa-sign-in-alt me-1"></i> Connexion
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('register_business') }}">
+                                <i class="fas fa-store me-1"></i> Enregistrer mon entreprise
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Flash Messages -->
+    <div class="container mt-3">
+        <div id="alert-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer>
+        <div class="container py-4">
+            <div class="row">
+                <div class="col-md-4 mb-4 mb-md-0">
+                    <h5 class="footer-title">Je Gagne Temps</h5>
+                    <p class="text-white-50">Trouvez des services à proximité et économisez du temps d'attente.</p>
+                    <div class="d-flex mt-3">
+                        <a href="#" class="text-white me-3"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#" class="text-white me-3"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="text-white me-3"><i class="fab fa-instagram"></i></a>
+                    </div>
+                </div>
+                <div class="col-md-2 col-6 mb-4 mb-md-0">
+                    <h5 class="footer-title">Liens</h5>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('index') }}">Accueil</a></li>
+                        <li><a href="{{ url_for('search') }}">Rechercher</a></li>
+                        <li><a href="{{ url_for('register_business') }}">Ajouter mon entreprise</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-2 col-6 mb-4 mb-md-0">
+                    <h5 class="footer-title">Catégories</h5>
+                    <ul class="footer-links">
+                        <li><a href="{{ url_for('search', category='HAIRDRESSER') }}" data-category-value="HAIRDRESSER">Coiffeur</a></li>
+                        <li><a href="{{ url_for('search', category='RESTAURANT') }}" data-category-value="RESTAURANT">Restaurant</a></li>
+                        <li><a href="{{ url_for('search', category='CAR_WASH') }}" data-category-value="CAR_WASH">Lavage Auto</a></li>
+                        <li><a href="{{ url_for('search', category='OTHER') }}" data-category-value="OTHER">Autres</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5 class="footer-title">Contactez-nous</h5>
+                    <ul class="footer-links">
+                        <li><i class="fas fa-envelope me-2"></i> contact@jegagnetemps.com</li>
+                        <li><i class="fas fa-phone me-2"></i> +123 456 789</li>
+                        <li><i class="fas fa-map-marker-alt me-2"></i> Afrique</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="copyright">
+            <div class="container">
+                <p class="mb-0">© 2023 Je Gagne Temps. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Offline Banner -->
+    <div id="offline-banner" class="offline-banner">
+        <i class="fas fa-wifi me-2"></i> Vous êtes actuellement hors ligne. Certaines fonctionnalités peuvent être limitées.
+    </div>
+    
+    <!-- Location Modal -->
+    <div class="modal fade" id="location-modal" tabindex="-1" aria-labelledby="location-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="location-modal-label">Entrez votre emplacement</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="manual-location-form">
+                        <div class="mb-3">
+                            <label for="city" class="form-label">Ville</label>
+                            <input type="text" class="form-control" id="city" placeholder="Entrez votre ville">
+                        </div>
+                        <div class="mb-3">
+                            <button type="submit" class="btn btn-primary w-100">Rechercher</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification Container -->
+    <div id="notification-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>
+    
+    <!-- Bootstrap JavaScript Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    
+    <!-- Sortable.js for drag and drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+    
+    <!-- Google Maps (loaded conditionally to avoid unnecessary API calls) -->
+    {% if 'search' in request.path or 'service' in request.path %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key|default('', true) }}&libraries=places&callback=initMap" async defer></script>
+    {% endif %}
+    
+    <!-- Custom JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/offline.js') }}"></script>
+    
+    {% if 'search' in request.path or 'service' in request.path %}
+    <script src="{{ url_for('static', filename='js/maps.js') }}"></script>
+    {% endif %}
+    
+    {% if 'business_dashboard' in request.path or 'service' in request.path or 'user_profile' in request.path %}
+    <script src="{{ url_for('static', filename='js/queue.js') }}"></script>
+    {% endif %}
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

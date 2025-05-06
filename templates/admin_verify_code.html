@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block title %}Vérification Administrateur{% endblock %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h4 class="mb-3 text-center">Saisir le code administrateur</h4>
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="code" class="form-label">Code reçu par email</label>
+                            <input type="text" class="form-control" name="code" required maxlength="6">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-dark">
+                                Valider le code
+                            </button>
+                        </div>
+                    </form>
+                    <p class="text-muted mt-3 text-center small">
+                        Ce code est valable 5 minutes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

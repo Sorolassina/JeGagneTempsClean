@@ -1,0 +1,382 @@
+{% extends "layout.html" %}
+
+{% block title %}Tableau de bord - {{ business.name }} - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Business Info Header -->
+    <div class="card mb-4 dashboard-card">
+        <div class="card-header dashboard-card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">{{ business.name }}</h4>
+                <span class="badge bg-light text-dark">{{ business.category.value }}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-8">
+                    <p><i class="fas fa-map-marker-alt me-2"></i> {{ business.address }}</p>
+                    <p><i class="fas fa-phone me-2"></i> {{ business.phone }}</p>
+                    <p><i class="fas fa-clock me-2"></i> {{ business.opening_hours }}</p>
+                    {% if business.description %}
+                    <p><i class="fas fa-info-circle me-2"></i> {{ business.description }}</p>
+                    {% endif %}
+                </div>
+                <div class="col-md-4 text-md-end">
+                     <!--<button class="btn btn-outline-primary mb-2 w-100 w-md-auto">-->
+                        <a href="{{ url_for('edit_business', business_id=business.id) }}" class="btn btn-outline-primary mb-2 w-100 w-md-auto">
+                            <i class="fas fa-pencil-alt me-2"></i> Modifier les informations
+                        </a>
+                        <form action="{{ url_for('delete_business', business_id=business.id) }}" method="POST" onsubmit="return confirm('Voulez-vous vraiment supprimer cette entreprise ?');" class="d-inline">
+                            <button type="submit" class="btn btn-outline-danger mb-2 w-100 w-md-auto">
+                                <i class="fas fa-trash-alt me-2"></i> Supprimer l’entreprise
+                            </button>
+                        </form>
+                    <!--</button>-->
+                    <div class="form-check form-switch d-flex justify-content-md-end align-items-center mt-3">
+                        <input class="form-check-input me-2" type="checkbox" id="statusSwitch" {% if business.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="statusSwitch">
+                            {% if business.is_active %}Entreprise active{% else %}Entreprise inactive{% endif %}
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Stats -->
+    <div class="dashboard-stats mb-4">
+        <div class="stat-card">
+            <div class="value" id="total-services">{{ services|length }}</div>
+            <div class="label">Services</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="total-waiting">
+                {% set waiting_count = 0 %}
+                {% for service in services %}
+                    {% for entry in queue_data.get(service.id, []) %}
+                        {% set waiting_count = waiting_count + 1 %}
+                    {% endfor %}
+                {% endfor %}
+                {{ waiting_count }}
+            </div>
+            <div class="label">Clients en attente</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="avg-wait-time">
+                {% set total_wait = 0 %}
+                {% set total_services = 0 %}
+                {% for service in services %}
+                    {% if queue_data.get(service.id, [])|length > 0 %}
+                        {% set total_wait = total_wait + service.duration_minutes * queue_data.get(service.id, [])|length %}
+                        {% set total_services = total_services + 1 %}
+                    {% endif %}
+                {% endfor %}
+                {% if total_services > 0 %}
+                    {{ (total_wait / total_services)|int }} min
+                {% else %}
+                    0 min
+                {% endif %}
+            </div>
+            <div class="label">Temps d'attente moyen</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="today-customers">--</div>
+            <div class="label">Clients aujourd'hui</div>
+        </div>
+    </div>
+
+    <!-- Queue Management and Services -->
+    <div class="row g-4" id="queue-data-container" data-business-id="{{ business.id }}">
+        <!-- Services & Queue Management -->
+        <div class="col-lg-8">
+            <div class="card dashboard-card">
+                <div class="card-header dashboard-card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Gestion des files d'attente</h5>
+                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#addServiceModal">
+                        <i class="fas fa-plus me-1"></i> Ajouter un service
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <!-- Tab navigation for services -->
+                    <ul class="nav nav-tabs" id="servicesTabs" role="tablist">
+                        {% for service in services %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if loop.first %}active{% endif %}" 
+                                    id="service-tab-{{ service.id }}" 
+                                    data-bs-toggle="tab" 
+                                    data-bs-target="#service-content-{{ service.id }}" 
+                                    type="button" 
+                                    role="tab">
+                                {{ service.name }} 
+                                <span class="queue-count badge {% if queue_data.get(service.id, [])|length == 0 %}bg-success{% elif queue_data.get(service.id, [])|length <= 5 %}bg-primary{% elif queue_data.get(service.id, [])|length <= 10 %}bg-warning text-dark{% else %}bg-danger{% endif %}" data-service-id="{{ service.id }}">
+                                    {{ queue_data.get(service.id, [])|length }}
+                                </span>
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <!-- Tab content for services -->
+                    <div class="tab-content p-3" id="servicesTabContent">
+                        {% for service in services %}
+                        <div class="tab-pane fade {% if loop.first %}show active{% endif %}" 
+                             id="service-content-{{ service.id }}" 
+                             role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h6>{{ service.name }}</h6>
+                                    <p class="text-muted mb-0">
+                                        <small>{{ service.duration_minutes }} min par client - {{ service.price|default('Gratuit', true) }}</small>
+                                    </p>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-secondary me-1">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="queue-list" data-service-id="{{ service.id }}">
+                                {% set entries = queue_data.get(service.id, []) %}
+                                {% if entries|length > 0 %}
+                                    {% for entry in entries %}
+                                    <div class="queue-item" data-entry-id="{{ entry.id }}">
+                                        <div class="d-flex align-items-center">
+                                            <div class="queue-position">{{ entry.queue_position }}</div>
+                                            <div>
+                                                <strong>{{ entry.customer.username }}</strong>
+                                                <div class="text-muted small">En attente depuis {{ ((entry.updated_at - entry.created_at).total_seconds() / 60)|int }} min</div>
+                                            </div>
+                                        </div>
+                                        <div class="queue-item-actions">
+                                            <form class="update-queue-form" action="{{ url_for('update_queue') }}" method="POST">
+                                                <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                                                <input type="hidden" name="status" value="IN_PROGRESS">
+                                                <button type="submit" class="btn btn-sm btn-primary">Commencer</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                <div class="text-center p-4 text-muted">
+                                    Aucun client en attente
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h6>Clients en cours</h6>
+                                {% set in_progress = queue_data.get(service.id, []) | selectattr('status.value', 'equalto', 'in_progress') | list %}
+                                {% if in_progress|length > 0 %}
+                                    {% for entry in in_progress %}
+                                    <div class="queue-item">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                                                <i class="fas fa-spinner fa-spin"></i>
+                                            </div>
+                                            <div class="ms-2">
+                                                <strong>{{ entry.customer.username }}</strong>
+                                                <div class="text-muted small">Commencé il y a {{ ((entry.updated_at - entry.created_at).total_seconds() / 60)|int }} min</div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <form class="update-queue-form" action="{{ url_for('update_queue') }}" method="POST">
+                                                <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                                                <input type="hidden" name="status" value="COMPLETED">
+                                                <button type="submit" class="btn btn-sm btn-success">Terminé</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                <div class="text-center p-3 text-muted">
+                                    Aucun client en cours
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        {% if services|length == 0 %}
+                        <div class="text-center p-5">
+                            <div class="mb-4">
+                                <i class="fas fa-clipboard-list fa-3x text-muted"></i>
+                            </div>
+                            <h5>Aucun service configuré</h5>
+                            <p class="text-muted">Commencez par ajouter vos services pour gérer vos files d'attente.</p>
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal">
+                                <i class="fas fa-plus me-2"></i> Ajouter un service
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Activity & Quick Actions -->
+        <div class="col-lg-4">
+            <div class="card dashboard-card mb-4">
+                <div class="card-header dashboard-card-header">
+                    <h5 class="mb-0">Actions rapides</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#addQueueModal">
+                            <i class="fas fa-user-plus me-2"></i> Ajouter un client en file d'attente
+                        </button>
+                        <button class="btn btn-outline-primary" type="button">
+                            <i class="fas fa-bullhorn me-2"></i> Appeler le prochain client
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-history me-2"></i> Voir l'historique
+                        </button>
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" id="autoUpdateSwitch" checked>
+                            <label class="form-check-label" for="autoUpdateSwitch">Mise à jour automatique</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card dashboard-card">
+                <div class="card-header dashboard-card-header">
+                    <h5 class="mb-0">Activité récente</h5>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Client ajouté à la file</strong>
+                                <div class="text-muted small">Service: Coupe Homme</div>
+                            </div>
+                            <span class="text-muted small">Il y a 5 min</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Service terminé</strong>
+                                <div class="text-muted small">Client: Marie D.</div>
+                            </div>
+                            <span class="text-muted small">Il y a 15 min</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Service commencé</strong>
+                                <div class="text-muted small">Client: Thomas B.</div>
+                            </div>
+                            <span class="text-muted small">Il y a 25 min</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Client ajouté à la file</strong>
+                                <div class="text-muted small">Service: Coloration</div>
+                            </div>
+                            <span class="text-muted small">Il y a 30 min</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Service terminé</strong>
+                                <div class="text-muted small">Client: Pierre M.</div>
+                            </div>
+                            <span class="text-muted small">Il y a 45 min</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-footer text-center">
+                    <a href="#" class="text-decoration-none">Voir tout l'historique</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Service Modal -->
+<div class="modal fade" id="addServiceModal" tabindex="-1" aria-labelledby="addServiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addServiceModalLabel">Ajouter un service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('add_service') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nom du service *</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="duration_minutes" class="form-label">Durée (minutes) *</label>
+                            <input type="number" class="form-control" id="duration_minutes" name="duration_minutes" min="1" value="30" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="price" class="form-label">Prix (laissez vide si gratuit)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="price" name="price" min="0" step="0.01">
+                                <span class="input-group-text">€</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Queue Modal -->
+<div class="modal fade" id="addQueueModal" tabindex="-1" aria-labelledby="addQueueModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addQueueModalLabel">Ajouter un client en file d'attente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="#" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="service_select" class="form-label">Service *</label>
+                        <select class="form-select" id="service_select" name="service_id" required>
+                            <option value="" selected disabled>Sélectionnez un service</option>
+                            {% for service in services %}
+                            <option value="{{ service.id }}">{{ service.name }} ({{ service.duration_minutes }} min)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="customer_name" class="form-label">Nom du client *</label>
+                        <input type="text" class="form-control" id="customer_name" name="customer_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="customer_phone" class="form-label">Téléphone du client</label>
+                        <input type="tel" class="form-control" id="customer_phone" name="customer_phone">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notify_customer" name="notify_customer">
+                            <label class="form-check-label" for="notify_customer">
+                                Notifier le client quand son tour approche
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Ajouter à la file d'attente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

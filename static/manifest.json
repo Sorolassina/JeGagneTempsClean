@@ -1,0 +1,34 @@
+{
+  "name": "Je Gagne Temps",
+  "short_name": "JGT",
+  "description": "Trouvez des services à proximité et économisez du temps d'attente",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#8A2BE2",
+  "theme_color": "#8A2BE2",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/images/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ],
+  "categories": ["business", "lifestyle", "utilities"],
+  "lang": "fr-FR",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "iarc_rating_id": "",
+  "serviceworker": {
+    "src": "/static/js/service-worker.js",
+    "scope": "/"
+  },
+  "screenshots": [],
+  "features": [
+    "Trouver des services à proximité",
+    "Voir le temps d'attente en temps réel",
+    "Rejoindre une file d'attente à distance",
+    "Gérer votre entreprise et vos files d'attente"
+  ]
+}

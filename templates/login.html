@@ -1,0 +1,144 @@
+{% extends "layout.html" %}
+
+{% block title %}Connexion - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <h2 class="card-title text-center mb-4">Connexion ou Inscription</h2>
+                    
+                    <!-- Tabs for login/register -->
+                    <ul class="nav nav-tabs mb-4" id="authTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-content" type="button" role="tab" aria-controls="login-content" aria-selected="true">Connexion</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register-content" type="button" role="tab" aria-controls="register-content" aria-selected="false">Inscription</button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="authTabContent">
+                        <!-- Login Tab Content -->
+                        <div class="tab-pane fade show active" id="login-content" role="tabpanel" aria-labelledby="login-tab">
+                            <!-- Google Sign In Button -->
+                            {% if GOOGLE_OAUTH_CONFIGURED %}
+                            <div class="d-grid mb-4">
+                                <a href="{{ get_google_auth_url() }}" class="btn btn-outline-dark btn-lg">
+                                    <img src="{{ url_for('static', filename='images/google_logo.png') }}" alt="Google logo" height="18" class="me-2"> 
+                                    Se connecter avec Google
+                                </a>
+                            </div>
+
+                            {% if not current_user.is_authenticated %}
+                                <div class="text-center mt-4">
+                                    <a href="{{ url_for('admin_request_code') }}" class="btn btn-outline-dark">
+                                        <i class="fas fa-user-shield me-2"></i> Connexion administrateur
+                                    </a>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="separator text-center mb-4">
+                                <span class="separator-text px-3 text-muted">ou</span>
+                                <hr>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Regular Login Form -->
+                            <form action="{{ url_for('login') }}" method="POST">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control form-control-lg" id="email" name="email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Mot de passe</label>
+                                    <input type="password" class="form-control form-control-lg" id="password" name="password" required>
+                                </div>
+                                <div class="mb-4 form-check">
+                                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                    <label class="form-check-label" for="remember">Se souvenir de moi</label>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">Se connecter</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Register Tab Content -->
+                        <div class="tab-pane fade" id="register-content" role="tabpanel" aria-labelledby="register-tab">
+                            <!-- Google Sign Up Button -->
+                            {% if GOOGLE_OAUTH_CONFIGURED %}
+                            <div class="d-grid mb-4">
+                                <a href="{{ get_google_auth_url() }}" class="btn btn-outline-dark btn-lg">
+                                    <img src="{{ url_for('static', filename='images/google_logo.png') }}" alt="Google logo" height="18" class="me-2"> 
+                                    S'inscrire avec Google
+                                </a>
+                            </div>
+                            
+                            <div class="separator text-center mb-4">
+                                <span class="separator-text px-3 text-muted">ou</span>
+                                <hr>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Regular Register Form -->
+                            <form action="{{ url_for('register') }}" method="POST">
+                                <div class="mb-3">
+                                    <label for="reg-username" class="form-label">Nom d'utilisateur</label>
+                                    <input type="text" class="form-control form-control-lg" id="reg-username" name="username" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="reg-email" class="form-label">Email</label>
+                                    <input type="email" class="form-control form-control-lg" id="reg-email" name="email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="reg-password" class="form-label">Mot de passe</label>
+                                    <input type="password" class="form-control form-control-lg" id="reg-password" name="password" required>
+                                </div>
+                                <div class="mb-4 form-check">
+                                    <input type="checkbox" class="form-check-input" id="terms" name="terms" required>
+                                    <label class="form-check-label" for="terms">
+                                        J'accepte les <a href="#">conditions d'utilisation</a> et la <a href="#">politique de confidentialité</a>
+                                    </label>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">S'inscrire</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Business Registration Info -->
+            <div class="text-center mt-4">
+                <p>Vous êtes un propriétaire d'entreprise ?</p>
+                <a href="{{ url_for('register_business') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-store me-2"></i> Enregistrer mon entreprise
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .separator {
+        position: relative;
+    }
+    .separator hr {
+        position: absolute;
+        width: 100%;
+        top: 50%;
+        margin: 0;
+    }
+    .separator-text {
+        position: relative;
+        background-color: white;
+        z-index: 1;
+    }
+</style>
+{% endblock %}

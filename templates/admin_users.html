@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block title %}Administration des utilisateurs - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2 class="mb-4">Gestion des utilisateurs</h2>
+
+    <table class="table table-striped table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Email</th>
+                <th>Nom</th>
+                <th>Type</th>
+                <th>Statut</th>
+                <th>Abonnement</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.email }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.user_type.value }}</td>
+                <td>{{ "Bloqué" if user.is_blocked else "Actif" }}</td>
+                <td>
+                    {% if user.subscription_end %}
+                        {{ user.subscription_status.value }}<br>
+                        <small>jusqu'au {{ user.subscription_end.strftime('%d/%m/%Y') }}</small>
+                    {% else %}
+                        {{ user.subscription_status.value }}
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <form method="POST" action="{{ url_for('toggle_user_block', user_id=user.id) }}" class="d-inline">
+                        {% if user.is_blocked %}
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i class="fas fa-unlock me-1"></i> Débloquer
+                            </button>
+                        {% else %}
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                <i class="fas fa-lock me-1"></i> Bloquer
+                            </button>
+                        {% endif %}
+                    </form>
+                    <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Supprimer ce compte ?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

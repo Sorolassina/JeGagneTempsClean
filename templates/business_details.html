@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block title %}{{ business.name }} - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-3">{{ business.name }}</h2>
+    <p class="text-muted">{{ business.category }}</p>
+    <p>{{ business.description }}</p>
+
+    <hr>
+
+    <!-- ⭐ Formulaire de notation -->
+    {% if current_user.is_authenticated and current_user.user_type.value != 'business' %}
+    <h4>Donnez votre avis</h4>
+    <form method="POST" action="{{ url_for('submit_review', business_id=business.id) }}" class="mb-4">
+        <div class="mb-3">
+            <label for="rating">Note (1 à 5)</label>
+            <select class="form-select" name="rating" required>
+                {% for i in range(5, 0, -1) %}
+                <option value="{{ i }}">{{ i }} ★</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="comment">Commentaire (optionnel)</label>
+            <textarea name="comment" class="form-control" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Soumettre</button>
+    </form>
+    {% endif %}
+
+    <!-- 📝 Affichage des avis -->
+    <h4>Ce que disent les clients</h4>
+    {% for review in business.reviews %}
+    <div class="border rounded p-3 mb-3">
+        <strong>{{ review.user.username }}</strong> —
+        <span class="text-warning">
+            {{ "★" * review.rating }}{{ "☆" * (5 - review.rating) }}
+        </span>
+        <p class="mt-2 mb-0">{{ review.comment }}</p>
+        <small class="text-muted">{{ review.created_at.strftime("%d/%m/%Y") }}</small>
+    </div>
+    {% else %}
+    <p class="text-muted">Aucun avis pour l’instant.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,365 @@
+{% extends "layout.html" %}
+
+{% block title %}Recherche - Je Gagne Temps{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Search Form Section -->
+    <div class="search-container mb-4">
+        <form id="search-form" class="search-form" action="{{ url_for('search') }}" method="GET">
+            <div class="row g-3">
+                <div class="col-lg-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" name="q" placeholder="Rechercher un service..." value="{{ query }}">
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <select class="form-select" name="category">
+                        <option value="all" {% if not category or category == 'all' %}selected{% endif %}>Toutes les catégories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.name }}" {% if category == cat.name %}selected{% endif %} data-category-value="{{ cat.name }}">
+                            {{ cat.value }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-lg-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include-location" name="include_location" checked>
+                        <label class="form-check-label" for="include-location">
+                            Utiliser ma position actuelle
+                        </label>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i> Rechercher
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="row g-4">
+        <!-- Results Column -->
+        <div class="col-lg-4 order-2 order-lg-1">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Résultats de la recherche</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if businesses %}
+                        <div class="list-group list-group-flush">
+                            {% for business in businesses %}
+                            <a href="{{ url_for('service_details', business_id=business.id) }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ business.name }}</h6>
+                                        <p class="mb-1 text-muted small">{{ business.category.value }}</p>
+                                        <p class="mb-0 small">{{ business.address|truncate(50) }}</p>
+
+                                        <!-- Affichage de la note moyenne -->
+                                        {% if business.average_rating %}
+                                            <p class="mb-0 small text-warning">
+                                                ⭐ {{ business.average_rating|round(1) }}/5
+                                            </p>
+                                        {% else %}
+                                            <p class="mb-0 small text-muted">
+                                                ⭐ Pas encore noté...
+                                            </p>
+                                        {% endif %}
+    
+                                    </div>
+                                    
+                                    <div class="text-end">
+                                        {% if business.distance is defined %}
+                                        <span class="badge bg-light text-dark distance" data-distance="{{ business.distance }}">
+                                            {% if business.distance < 1 %}
+                                                {{ (business.distance * 1000)|int }} m
+                                            {% else %}
+                                                {{ business.distance|round(1) }} km
+                                            {% endif %}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                            <!-- Boutons pour voir/ajouter un avis -->
+                            
+                            <div class="mt-2" style="text-align: center;">
+                                <button class="btn btn-sm btn-outline-info me-2" data-bs-toggle="modal" data-bs-target="#viewReviewsModal" data-business-id="{{ business.id }}">
+                                    <i class="fas fa-comments me-1"></i> Avis
+                                </button>
+                                {% if current_user.is_authenticated and current_user.user_type.value == 'customer' %}
+                                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#rateServiceModal" data-business-id="{{ business.id }}">
+                                    <i class="fas fa-star me-1"></i> Noter
+                                </button>
+                                {% endif %}
+                            </div>
+                            
+                            {% endfor %}
+
+                        </div>
+                    {% else %}
+                        <div class="text-center p-4">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h5>Aucun résultat trouvé</h5>
+                            <p class="text-muted">Essayez de modifier vos critères de recherche ou d'élargir votre zone.</p>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">{{ businesses|length }} résultat(s) trouvé(s)</small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary offline-form-toggle">
+                                <i class="fas fa-download me-1"></i> Enregistrer pour hors ligne
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Map Column -->
+        <div class="col-lg-8 order-1 order-lg-2">
+            <div id="map-container" class="mb-4">
+                <!-- Map will be loaded here -->
+                <div id="map-loader" class="d-flex justify-content-center align-items-center h-100">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Filters & Quick Actions -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Filtres rapides</h5>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button class="btn btn-sm btn-outline-primary" data-filter="distance" data-value="1">
+                            <i class="fas fa-map-marker-alt me-1"></i> < 1 km
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" data-filter="distance" data-value="5">
+                            <i class="fas fa-map-marker-alt me-1"></i> < 5 km
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" data-filter="queue" data-value="small">
+                            <i class="fas fa-user-clock me-1"></i> File courte
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" data-filter="open" data-value="now">
+                            <i class="fas fa-door-open me-1"></i> Ouvert maintenant
+                        </button>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="showRouteSwitch" checked>
+                            <label class="form-check-label" for="showRouteSwitch">Afficher l'itinéraire</label>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary" id="refreshMap">
+                            <i class="fas fa-sync-alt me-1"></i> Actualiser la carte
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal: Voir les avis -->
+<div class="modal fade" id="viewReviewsModal" tabindex="-1" aria-labelledby="viewReviewsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewReviewsLabel">Avis des clients</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <div id="reviews-content">
+            <p class="text-muted">Chargement des avis...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal: Noter le service -->
+  <div class="modal fade" id="rateServiceModal" tabindex="-1" aria-labelledby="rateServiceLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <form method="POST"  id="ratingForm">
+        <input type="hidden" name="business_id" id="ratingBusinessId">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="rateServiceLabel">Noter ce service</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="rating" class="form-label">Note</label>
+              <div class="star-rating mb-3">
+                {% for i in range(5, 0, -1) %}
+                <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" required>
+                <label for="star{{ i }}"><i class="fas fa-star"></i></label>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="comment" class="form-label">Commentaire</label>
+              <textarea class="form-control" name="comment" rows="3" placeholder="Donnez votre avis..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-success">Envoyer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% if current_user.is_authenticated and current_user.user_type.value == 'customer' %}
+
+  
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filter buttons functionality
+        const filterButtons = document.querySelectorAll('[data-filter]');
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const filter = this.dataset.filter;
+                const value = this.dataset.value;
+                
+                // Toggle active state
+                this.classList.toggle('active');
+                if (this.classList.contains('active')) {
+                    this.classList.remove('btn-outline-primary');
+                    this.classList.add('btn-primary');
+                } else {
+                    this.classList.remove('btn-primary');
+                    this.classList.add('btn-outline-primary');
+                }
+                
+                // Apply filters (would be implemented in maps.js)
+                if (typeof applyMapFilter === 'function') {
+                    applyMapFilter(filter, value, this.classList.contains('active'));
+                }
+            });
+        });
+        
+        // Refresh map button
+        const refreshMapBtn = document.getElementById('refreshMap');
+        if (refreshMapBtn) {
+            refreshMapBtn.addEventListener('click', function() {
+                const spinner = document.createElement('span');
+                spinner.className = 'spinner-border spinner-border-sm me-1';
+                spinner.setAttribute('role', 'status');
+                spinner.innerHTML = '<span class="visually-hidden">Chargement...</span>';
+                
+                this.prepend(spinner);
+                this.disabled = true;
+                
+                // Reload map (would be implemented in maps.js)
+                if (typeof reloadMap === 'function') {
+                    reloadMap().then(() => {
+                        this.disabled = false;
+                        spinner.remove();
+                    });
+                } else {
+                    setTimeout(() => {
+                        this.disabled = false;
+                        spinner.remove();
+                    }, 1000);
+                }
+            });
+        }
+        
+        // Offline form toggle
+        const offlineFormToggle = document.querySelector('.offline-form-toggle');
+        if (offlineFormToggle) {
+            offlineFormToggle.addEventListener('click', function() {
+                const searchParams = new URLSearchParams(window.location.search);
+                const category = searchParams.get('category') || 'all';
+                const query = searchParams.get('q') || '';
+                
+                // Save current search to localStorage for offline use
+                const searchData = {
+                    query: query,
+                    category: category,
+                    timestamp: Date.now(),
+                    results: []
+                };
+                
+                // Get business data from the page
+                document.querySelectorAll('.list-group-item-action').forEach(item => {
+                    const name = item.querySelector('h6').textContent;
+                    const category = item.querySelector('.text-muted.small').textContent;
+                    const address = item.querySelector('.small').textContent;
+                    const href = item.getAttribute('href');
+                    const id = href.split('/').pop();
+                    
+                    let distance = null;
+                    const distanceEl = item.querySelector('.distance');
+                    if (distanceEl) {
+                        distance = parseFloat(distanceEl.dataset.distance);
+                    }
+                    
+                    searchData.results.push({
+                        id: id,
+                        name: name,
+                        category: category,
+                        address: address,
+                        distance: distance
+                    });
+                });
+                
+                // Save to localStorage
+                localStorage.setItem('offline_search_' + category + '_' + query, JSON.stringify(searchData));
+                
+                // Update button
+                this.innerHTML = '<i class="fas fa-check me-1"></i> Enregistré pour hors ligne';
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-success');
+                this.disabled = true;
+                
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-download me-1"></i> Enregistrer pour hors ligne';
+                    this.classList.remove('btn-success');
+                    this.classList.add('btn-outline-secondary');
+                    this.disabled = false;
+                }, 2000);
+            });
+        }
+    });
+    // JavaScript pour remplir dynamiquement les modals (extra_js) :
+    document.addEventListener('DOMContentLoaded', function () {
+    const reviewModal = document.getElementById('viewReviewsModal');
+    const rateModal = document.getElementById('rateServiceModal');
+    const ratingForm = document.getElementById('ratingForm');
+
+    if (reviewModal) {
+        reviewModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const businessId = button.getAttribute('data-business-id');
+            const container = reviewModal.querySelector('#reviews-content');
+            fetch(`/business/${businessId}/reviews`)
+                .then(res => res.text())
+                .then(html => container.innerHTML = html)
+                .catch(() => container.innerHTML = '<p class="text-danger">Erreur de chargement des avis.</p>');
+        });
+    }
+
+    if (rateModal) {
+        rateModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const businessId = button.getAttribute('data-business-id');
+            document.getElementById('ratingBusinessId').value = businessId;
+            ratingForm.action = `/business/${businessId}/review`;//Mise à jour de l'action dynamiquement
+        });
+    }
+});
+
+
+
+</script>
+{% endblock %}

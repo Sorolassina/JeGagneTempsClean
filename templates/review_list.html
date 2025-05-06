@@ -1,0 +1,8 @@
+{% for review in reviews %}
+  <div class="mb-3 border-bottom pb-2">
+    <strong>{{ review.user.username }}</strong> - ⭐ {{ review.rating }}/5<br>
+    <small class="text-muted">{{ review.comment }}</small>
+  </div>
+{% else %}
+  <p class="text-muted">Aucun avis pour le moment.</p>
+{% endfor %}
