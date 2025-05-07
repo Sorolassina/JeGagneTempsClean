@@ -15,4 +15,6 @@ app.jinja_env.globals.update(
 )
 
 if __name__ == "__main__":
-    app.run(host="localhost", port=8000, debug=True)
+    port = int(os.environ.get("PORT", 8000))  # Utilisé par Render ou localement
+    host = os.environ.get("HOST", "0.0.0.0")  # Par défaut: "0.0.0.0" pour accepter toutes les IPs
+    app.run(host=host, port=port)
